@@ -11,9 +11,8 @@ logger.setLevel(logging.DEBUG)
 
 
 class DataProduct(object):
-    def __init__(self, product_name, force_build_all):
+    def __init__(self, product_name):
         self.value = None
-        self.force_build_all = force_build_all
         self.product_name = product_name
     
     def store(self):
@@ -41,18 +40,16 @@ class DataProduct(object):
                 fh = open(path, mode="r")
                 self.value = load(fh)
                 logger.debug("Found {}, using.".format(self.product_name))
+                return self.value
+            
             except IOError:
                 logger.warning("Failed opening {}, will build {} from dependencies.".format(
                         path, self.product_name))
-                self.value = self.build()                
-                self.store()
-        else:
-            self.value = self.build()
-                     
+
+        self.value = self.build()                
+        self.store()
+    
         return self.value
-        
-    def verify(self):
-        raise NotImplemented()
     
     def build(self):
         raise NotImplemented()

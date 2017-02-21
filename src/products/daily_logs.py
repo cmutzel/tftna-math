@@ -30,16 +30,6 @@ def get_trailing_value(row_values, field_name, max_cols=3):
         
     return value
 
-def normalize_columns(frame):
-    
-    # fix all the columns names
-    frame.columns = frame.columns.str.strip().str.lower().str.replace(' ', '_')
-    
-    # now lets only take the columsn which have non-null names
-    #  (i.e. carry forward no columns named '')
-    final_columns = [name for name in frame.columns if name != '']
-    
-    return frame[final_columns]
 
 class WeekyTrainingLog:
     def __init__(self):
@@ -60,10 +50,11 @@ class WeekyTrainingLog:
         print "Week number: {}, Target Hours: {}, Training period: {}"
         
     def read_sheet(self, sheet):
-        print "Reading sheet {}".format(sheet)
+        logger.info("Reading sheet {}".format(sheet))
         wb = load_workbook(sheet)
         self.sheet = sheet
         sheet1 = wb["Sheet1"]
+        readable_sheet_name = self.sheet_name.replace("%2F", "/")
         
         for i, row in enumerate(sheet1.rows):
             
@@ -154,9 +145,7 @@ class WeekyTrainingLog:
         
             if r > 11 and r < 19:
                 new_log_entry = row_values
-                readable_sheet_name = self.sheet_name.replace("%2F", "/")
                 new_log_entry.extend([readable_sheet_name, self.training_period])
-                
                 
                 #logging.debug("Adding row {}".format(new_log_entry))
                 self.daily_logs.append(new_log_entry)
@@ -168,20 +157,27 @@ class WeekyTrainingLog:
                                           columns=self.final_column_labels)
         frame = frame.set_index(['Date'])
         frame = frame.fillna(value=0)
+        
+        # fix all the columns names
+        frame.columns = frame.columns.str.strip().str.lower().str.replace(' ', '_')
+        #print frame
     
-        return normalize_columns(frame)
+        # now lets only take the columns which have non-null names
+        #  (i.e. carry forward no columns named '')
+        final_columns = [name for name in frame.columns if name != '']
+        
+        return frame[final_columns]
+    
     
     def get_column_names(self):
         return self.final_labels
-     
     
 class DailyLogs(DataProduct):
     product_name = PRODUCT_NAME
     requires = []
     
     def __init__(self, force_build_all=False):    
-        super(DailyLogs, self).__init__(DailyLogs.product_name,
-             force_build_all)
+        super(DailyLogs, self).__init__(DailyLogs.product_name)
         
     def build(self):
         path_to_data = os.path.join(os.path.dirname(
@@ -193,42 +189,54 @@ class DailyLogs(DataProduct):
                 weeklyLog = WeekyTrainingLog()
                 weeklyLog.read_sheet(path_to_data + log)
                 frame = weeklyLog.to_dataframe()
-                
                 logger.debug("Adding {} logs with with dates {} through {}".format(
                         len(frame), min(frame.index), max(frame.index)))
                 all_frames.append(frame)
-                #break    
                 
-        return pd.concat(all_frames)
-    
-    def verify(daily_logs):
-        """
-            Runs a few basic tests on our data after we have done some munging.
-            Returns unmodifed inputs if data is verified, otherwise
-            an exception is thrown.
-            
-            Parameters
-            ----------
-            daily_logs : Pandas.DataFrame where each row is a training day. 
-                See get_daily_logs_as_dataframe
-        
-            Returns
-            -------
-            daily_logs as passed into Parameters
-        """
-        
-        # some quick checks on the data
-        daily_logs = daily_logs.sort_index()
-        
-        logger.debug("First date in range: {}".format(min(daily_logs.index)))
-        logger.debug("Last date in range: {}".format(max(daily_logs.index)))
-        
-        grouped_on_date = daily_logs.groupby(level=0)
-        duplicate_rows = grouped_on_date.size()[lambda i: i > 1]
-        
-        logger.warning("Found {} duplicate rows...".format(len(duplicate_rows)))
-        if len(duplicate_rows) > 0:
-            logging.warning(duplicate_rows)
-        
+        daily_logs = pd.concat(all_frames, join='outer')
+        fixes = {
+                'B/A': 'B', # only one of these values, dug in and assigned value
+                'C, B': 'C', # only one of these values, dug in and assigned value
+        }
+
+        # get rid of any days where we didn't do a workout
+        daily_logs = daily_logs.replace(to_replace={'workout_grade': fixes})
+                        
         return daily_logs
     
+#    def verify(daily_logs):
+#        """
+#            Runs a few basic tests on our data after we have done some munging.
+#            Returns unmodifed inputs if data is verified, otherwise
+#            an exception is thrown.
+#            
+#            Parameters
+#            ----------
+#            daily_logs : Pandas.DataFrame where each row is a training day. 
+#                See get_daily_logs_as_dataframe
+#        
+#            Returns
+#            -------
+#            daily_logs as passed into Parameters
+#        """
+#        
+#        # some quick checks on the data
+#        daily_logs = daily_logs.sort_index()
+#        
+#        logger.debug("First date in range: {}".format(min(daily_logs.index)))
+#        logger.debug("Last date in range: {}".format(max(daily_logs.index)))
+#        
+#        grouped_on_date = daily_logs.groupby(level=0)
+#        duplicate_rows = grouped_on_date.size()[lambda i: i > 1]
+#        
+#        logger.warning("Found {} duplicate rows...".format(len(duplicate_rows)))
+#        if len(duplicate_rows) > 0:
+#            logging.warning(duplicate_rows)
+#        
+#        return daily_logs
+    
+if __name__ == "__main__":
+    from src.products.product_factory import DataProductFactory
+    factory = DataProductFactory()
+    value = factory.get_product(PRODUCT_NAME, force_build=True)
+    print value.columns

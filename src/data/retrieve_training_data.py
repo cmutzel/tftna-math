@@ -21,7 +21,7 @@ def copy_logs():
     target_dir = "/Users/chrismutzel/projects/tftna-math/data/raw"
     
     for f in listdir(src_dir):
-        if "Chris - Training Log" in f:
+        if "Chris - Training" in f:
             copy("{}/{}".format(src_dir, f), target_dir)
     
 if __name__ == "__main__":

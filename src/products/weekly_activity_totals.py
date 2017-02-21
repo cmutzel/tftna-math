@@ -8,17 +8,15 @@ Created on Tue Feb  7 19:08:14 2017
 """
 import numpy as np
 from src.products.data_product import DataProduct
-
-"""make this visible at the top of the file for easier reading"""
 PRODUCT_NAME = "weekly_activity_totals"
 
 class WeeklyActivityTotals(DataProduct):
     product_name = PRODUCT_NAME
     requires = ["daily_logs"]
 
-    def __init__(self, force_build_all=False):
+    def __init__(self):
         super(WeeklyActivityTotals, self).__init__(
-                WeeklyActivityTotals.product_name, force_build_all)
+                WeeklyActivityTotals.product_name)
         
     def build(self):
         """
@@ -26,8 +24,7 @@ class WeeklyActivityTotals(DataProduct):
     
         Parameters
         ----------
-        daily_logs : Pandas.DataFrame where each row is a training day. 
-            See get_daily_logs_as_dataframe
+        None
     
         Returns
         -------
@@ -49,6 +46,7 @@ class WeeklyActivityTotals(DataProduct):
         cols = [c for c in daily_logs.columns if ("activity_" in c or "zone" in c)]
         
         min_dates = grouped_byweek.agg({"Date" : np.min})
+        #period = grouped_byweek.agg({""})
         sum_activities = grouped_byweek.sum()[cols]
         sum_activities["total"] = sum_activities.apply(np.sum, axis=1)
         
@@ -64,35 +62,11 @@ class WeeklyActivityTotals(DataProduct):
         return weekly_totals.sort_index()
     
 
-    def verify(self):
-        """
-            Runs a few basic tests on our data after we have done some munging.
-            Returns unmodifed inputs if data is verified, otherwise
-            an exception is thrown.
-            
-            Parameters
-            ----------
-            daily_logs : Pandas.DataFrame where each row is a training day. 
-                See get_daily_logs_as_dataframe
-        
-            Returns
-            -------
-            daily_logs as passed into Parameters
-        """
-        
-        # some quick checks on the data
-        daily_logs = self.values
-        daily_logs = daily_logs.sort_index()
-        
-        print "First date in range: {}".format(min(daily_logs.index))
-        print "Last date in range: {}".format(max(daily_logs.index))
-        
-        grouped_on_date = daily_logs.groupby(level=0)
-        duplicate_rows = grouped_on_date.size()[lambda i: i > 1]
-        
-        print "Found {} duplicate rows...".format(len(duplicate_rows))
-        if len(duplicate_rows) > 0:
-            print duplicate_rows    
-        
-        return daily_logs
+    def verify(self):   
+        return self.value
     
+if __name__ == "__main__":
+    from src.products.product_factory import DataProductFactory
+    factory = DataProductFactory()
+    value = factory.get_product(PRODUCT_NAME, force_build=True)
+    print value
