@@ -1,7 +1,7 @@
 tftna-math
 ==============================
 
-A bunch of python code for visualization training performance and results. 
+A bunch of python code for visualization of training performance and results. 
 
 Training goals are based on Training for the New Alpinism (House, Bennett)
 https://www.amazon.com/dp/B00ILZ8S0K/ref=dp-kindle-redirect?_encoding=UTF8&btkr=1

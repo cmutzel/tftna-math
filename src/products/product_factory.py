@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Run this file to make all the data products
 import networkx as nx
 
 import logging
@@ -14,13 +15,7 @@ PRODUCTS = {
         "weekly_activity_totals": WeeklyActivityTotals,
         "base_training_goals": BaseTrainingGoals,
         "daily_logs": DailyLogs
-}
-
-"""
-    Playing around with NetworkX.  A bit overkill here, but want to see
-    how lightweight it is. 
-""" 
-        
+} 
 
 class DataProductFactory(object):
     def __init__(self):
@@ -36,7 +31,7 @@ class DataProductFactory(object):
             value of the data product (usually a Pandas DataFrame)
         
         Post-condition:
-            Data product @name exists in ./data/processed
+            Pickled version of data product exists in ./data/processed
             
         """
         logger.info("Making '{}'".format(name))
@@ -59,20 +54,26 @@ class DataProductFactory(object):
         return value
     
     def make_all(self):
-        """Post-condition: all data products exist within ./data/processed"""
+        """
+            Post-condition: all data products named in PRODUCTS
+                exist within ./data/processed
+        """
         logger.info("Making all products")
         for name in self.products.iterkeys():
             self.get_product(name)
         
     def plot_make_dependencies(self):
-        # a directed graph
+        """
+            Playing around with NetworkX to look at the dependencies between
+            different data products. 
+        """
         g = nx.DiGraph()
         for name, klass in self.products.iteritems():
             # add a node for each data product
             g.add_node(name)
             
-            # and an edge between any dependencies between products
-            #  might be able to do this will add_edge exclusively (remove calls
+            # and a directed edge between any dependencies between products
+            #  might be able to do add_edge exclusively (remove calls
             #  to add_node) above...requires further testing...
             for requirement in klass.requires:
                 g.add_edge(requirement, name)
