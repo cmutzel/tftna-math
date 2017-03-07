@@ -32,35 +32,29 @@ class WeeklyActivityTotals(DataProduct):
         with sum of hours for each activity each week and also a column showing
         total of training hours. 
         i.e. 
-            activity_bike  activity_run activity_climb  total
-        1             0.5             1              0    1.5 
-        2               0             1              1      2 
+            activity_bike  activity_run activity_climb  total training_period
+        1             0.5             1              0    1.5      transition
+        2               0             1              1      2      transition       
         ...
+        n               1             0              2      1            base       
         
         """
     
-        # lets count up the weekly totals
+        # used pandas group by to get the sum for each intensity tye and
+        #  activity for each week.  Keep track of the date
+        #   and the training period
         daily_logs = self.daily_logs.reset_index() #we want to preserve the date 
         daily_logs["week"] = daily_logs["Date"].map(lambda t: t.week)
-        grouped_byweek = daily_logs.groupby(["week"])
+
         cols = [c for c in daily_logs.columns if ("activity_" in c or "zone" in c)]
-        
-        min_dates = grouped_byweek.agg({"Date" : np.min})
-        #period = grouped_byweek.agg({""})
-        sum_activities = grouped_byweek.sum()[cols]
-        sum_activities["total"] = sum_activities.apply(np.sum, axis=1)
-        
-        # we need to reset the index, as our training period may have
-        #  started before the new year, in which case the first few weeks of 
-        #  training actually have a week = 54, 55, 56 ...
-        weekly_totals = min_dates.join(sum_activities)
-        a = [0 for i in xrange(24)]
-        a.extend([-53, -53, -53, -53, -53])
-        new_index = np.array([sum_activities.index.values + a]) + 4
-        weekly_totals.index = new_index[0]
-        
-        return weekly_totals.sort_index()
-    
+        funcs = {}
+        funcs["Date"] = np.min
+        funcs["training_period"] = lambda x: x.iloc[0] # ~= first()
+        for c in cols:
+            funcs[c] = np.sum
+                        
+        grouped_byweek = daily_logs.groupby(["week"])
+        return grouped_byweek.agg(funcs).sort_values(by=["Date"]).reset_index()
 
     def verify(self):   
         return self.value

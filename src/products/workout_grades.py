@@ -11,6 +11,7 @@ logger.setLevel(logging.DEBUG)
 
 PRODUCT_NAME = "daily_logs"
 
+
 grades = daily_logs.reset_index()[["workout_grade","Date"]]
 as_num = {
         'A': 4,
